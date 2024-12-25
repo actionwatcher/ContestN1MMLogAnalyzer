@@ -75,3 +75,6 @@ def generate_stats(df):
     stats['active_radios'] = {r: int((df['RadioNR'] == r).sum()) for r in set(df.RadioNR.to_list())}
     
     return stats, counts_10min, counts_30min, counts_60min
+
+def log(level, str):
+    print(level, str)
