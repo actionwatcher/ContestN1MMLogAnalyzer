@@ -10,7 +10,8 @@ if platform.system() == 'Darwin':
 else:
     Button = tk.Button
     gLeftButton = '<ButtonRelease-3>'
-import sqlite3
+import helpers as hl
+from LogSource import LogSource, SQLLogSource
 
 class LogAnalyzerApp:
     def __init__(self, root, config_path, data_path):
@@ -25,8 +26,17 @@ class LogAnalyzerApp:
         self.root_.protocol("WM_DELETE_WINDOW", self.quit_app)
         self.root_.createcommand("::tk::mac::Quit", self.quit_app)
         self.root_.title("Log Analyzer: knowledge weapon of winners")
+        self.log_source_ : LogSource
         self.load_settings()
+        self.init_source()
         self.show_main_screen()
+
+    def init_source(self):
+        file = os.path.join(self.data_source_dir, self.data_source_file.get())
+        print(file)
+        self.log_source_ = SQLLogSource(files=[file])
+        if not self.log_source_.is_valid():
+            hl.log('ERROR', f'{file} Invalid')
 
     def show_main_screen(self):
         self.root_.geometry(f"{self.ui_width}x{self.ui_height}")
@@ -39,7 +49,6 @@ class LogAnalyzerApp:
         self.file_path_entry.grid(row=0, column=0, padx=5, pady=5)
         self.file_select_button = Button(l_frame, text="Browse", command=self.select_source_file)
         self.file_select_button.grid(row=0, column=1, padx=5, pady=5)
-        self.open_db()
         logs_frame = ttk.LabelFrame(l_frame, text="Logs", border=2)
         logs_frame.grid(row=1, column=0, columnspan=2)
         self.log_tree = ttk.Treeview(logs_frame, columns=('date', 'contest'), show='headings')
@@ -80,7 +89,7 @@ class LogAnalyzerApp:
 
     
     def populate_log_tree(self):
-        if not self.cursor_:
+        if not self.log_source_.is_valid():
             return
         for item in self.log_tree.get_children():
             self.log_tree.delete(item)
@@ -89,17 +98,16 @@ class LogAnalyzerApp:
             dir = 'ASC'
         else:
             dir = 'DESC'
-        q = f'SELECT StartDate, ContestName, ContestNR from ContestInstance ORDER BY {self.sort_by} {dir}'
-        logs = self.cursor_.execute(q).fetchall()
-        for log in logs:
-            self.log_tree.insert('', tk.END, values=(log[0], log[1], log[2]))
+        logs = self.log_source_.get_contests(sorted_by=self.sort_by, dir=dir)
+        for index, log in logs.iterrows():
+            self.log_tree.insert('', tk.END, values=(log['StartDate'], log['ContestName'], log['ContestNR']))
 
     def populate_stats_tree(self):
         selected_items = self.log_tree.selection()  # Get selected item IDs
         for item_id in selected_items:
             item = self.log_tree.item(item_id)
             txt = item['values'][1]
-            print(txt)
+            print(item['values'])
             self.stat_tree.heading('contest', text=txt)
         # for log in logs:
         #     self.log_tree.insert('', tk.END, values=(log[0], log[1], log[2]))
@@ -118,40 +126,23 @@ class LogAnalyzerApp:
             item = self.log_tree.item(item_id)
             print(f"Selected date: {item_id}, Values: {item['values']}")
 
-# def get_selected_items():
-#     selected_items = tree.selection()  # Get selected item IDs
-#     for item_id in selected_items:
-#         item = tree.item(item_id)
-#         print(f"Selected ID: {item_id}, Values: {item['values']}")
-
-    def open_db(self):
-        db_path = os.path.join(self.data_source_dir, self.data_source_file.get())
-        if os.path.exists(db_path):
-            if self.db_connection_:
-                self.db_connection_.close()
-                self.db_connection_ = None
-                self.cursor_ = None
-            self.db_connection_ = sqlite3.connect(db_path)
-            self.cursor_ = self.db_connection_.cursor()
 
     def select_source_file(self):
         selected_file = filedialog.askopenfilename(
             title="Select a file",
             initialdir=self.data_source_dir,
-            filetypes=(("DB files", "*.s3db"), ("SCP", "*.scp"), ("All files", "*.*"))
+            filetypes=(("DB files", "*.s3db *.db"), ("Cabrillo", "*.log *.txt"), ("All files", "*.*")),
+            multiple=True
         )
         if selected_file:
-            selected_dir, selected_file = os.path.split(selected_file)
+            selected_dir, selected_file = os.path.split(selected_file[0])
             self.data_source_file.set(selected_file)
             self.data_source_dir = selected_dir
             self.save_settings()
-            self.open_db()
+            self.init_source()
             self.populate_log_tree()
 
     def quit_app(self):
-        if self.db_connection_:
-            self.db_connection_.close()
-            self.db_connection_ = None
         self.root_.quit()
 
     def load_settings(self):

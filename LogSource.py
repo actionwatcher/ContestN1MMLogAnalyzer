@@ -5,6 +5,9 @@ import sqlite3
 import helpers as hl
 
 class LogSource(Protocol):
+    def is_valid(self):
+        """Check if usable"""
+        ...
     def initialize(self, files: list):
         """Initialize object with files"""
         ...
@@ -20,11 +23,13 @@ class LogSource(Protocol):
 
 
 class SQLLogSource:
-    def __init__(self):
+    def __init__(self, files=None):
         self.isvalid_ = False
         self.db_connection_ = None
         self.cursor_ = None
         self.contests_ = None
+        if files:
+            self.initialize(files)
     
     def __enter__(self):
         return self
@@ -44,6 +49,8 @@ class SQLLogSource:
         self.cursor_ = None
         self.contests_ = None
 
+    def is_valid(self):
+        return self.isvalid_
 
     def initialize(self, files: list) -> bool:
         db_path = files[0]
@@ -67,12 +74,12 @@ class SQLLogSource:
         """Retrieve list of available contests"""
         if not self.isvalid_:
             return {}
-        if not self.contests_:
+        if self.contests_ is None:
             q = f'select * from ContestInstance order by {sorted_by} {dir}'
             self.contests_ = pd.read_sql_query(q, self.db_connection_)
         elif self.sorted_by_ != sorted_by or self.sorted_dir_ != dir:
-            isasc = (dir.lower() == 'asc')
-            self.contests_.sort_values(by=sorted_by, ascending=isasc) 
+            isasc = (dir.upper() == 'ASC')
+            self.contests_ = self.contests_.sort_values(by=sorted_by, ascending=isasc) 
         self.sorted_by_ = sorted_by
         self.sorted_dir_ = dir
         return self.contests_
