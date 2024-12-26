@@ -61,8 +61,8 @@ class LogAnalyzerApp:
                     self.sort_inverted = False
                 self.populate_log_tree()
             return handler
-        self.log_tree.heading('date', text='Date', command=create_handler('StartDate'))
-        self.log_tree.heading('contest', text='Contest', command=create_handler('ContestName'))
+        self.log_tree.heading('date', text='Date', command=create_handler(['StartDate', 'ContestName']))
+        self.log_tree.heading('contest', text='Contest', command=create_handler(['ContestName', 'StartDate']))
         self.log_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5, pady=5 )
 
         scrollbar = ttk.Scrollbar(logs_frame, orient=tk.VERTICAL, command=self.log_tree.yview)
@@ -74,14 +74,13 @@ class LogAnalyzerApp:
         self.populate_log_tree()
 
         # Stats frame
-        self.stat_tree = ttk.Treeview(r_frame, columns=('stat', 'contest'), show='headings')
+        self.stat_tree = ttk.Treeview(r_frame, columns=('stat', 'contest'), show='headings', height=15)
         self.stat_tree.heading('stat', text='Statistics')
-        self.stat_tree.heading('contest', text='Contest')
-        self.stat_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5, pady=5 )
+        self.stat_tree.grid(row=0, column=0, padx=5, pady=5, sticky="nsew")
 
-        scrollbar = ttk.Scrollbar(r_frame, orient=tk.VERTICAL, command=self.log_tree.yview)
+        scrollbar = ttk.Scrollbar(r_frame, orient=tk.VERTICAL, command=self.stat_tree.yview)
         self.stat_tree.configure(yscroll=scrollbar.set)
-        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        scrollbar.grid(row=0, column=1, padx=3, pady=5, sticky="ns")
 
         #self.stat_tree.bind('<ButtonRelease-1>', self.on_click)
 #        self.log_tree.bind(gLeftButton, self.show_context_menu)
@@ -104,13 +103,28 @@ class LogAnalyzerApp:
 
     def populate_stats_tree(self):
         selected_items = self.log_tree.selection()  # Get selected item IDs
-        for item_id in selected_items:
+        columns = [ f'col{idx}' for idx in range(len(selected_items)+1)]
+        self.stat_tree["columns"] = columns
+        self.stat_tree.heading(columns[0], text='Statistics')
+        stats = []
+        for idx, col in enumerate(columns[1:]):
+            item_id = selected_items[idx]
             item = self.log_tree.item(item_id)
-            txt = item['values'][1]
-            print(item['values'])
-            self.stat_tree.heading('contest', text=txt)
-        # for log in logs:
-        #     self.log_tree.insert('', tk.END, values=(log[0], log[1], log[2]))
+            contest_name = item['values'][1]
+            contest_id = item['values'][2]
+            self.stat_tree.heading(col, text=contest_name)
+            qs = self.log_source_.get_contest_qsos(contest_id=contest_id)
+            stats.append(hl.generate_stats(qs))
+        if len(stats) == 0:
+            return
+        for item in self.stat_tree.get_children():
+            self.stat_tree.delete(item)
+
+        for key in stats[0][0].keys():
+            values = [key] + [st[0][key] for st in stats]
+            self.stat_tree.insert('', tk.END, values=values)
+
+
 
     def on_click(self, event):
         try:
@@ -149,9 +163,9 @@ class LogAnalyzerApp:
         with shelve.open(os.path.join(self.config_path_,'settings')) as settings:
             self.data_source_file = tk.StringVar(value=settings.get('data_source_file', 'MASTER.SCP'))
             self.data_source_dir = settings.get('data_source_dir', self.data_path)
-            self.ui_width = settings.get('ui_width',808)
+            self.ui_width = settings.get('ui_width',1008)
             self.ui_height =settings.get('ui_height', 500)
-            self.sort_by = settings.get('sort_by', 'StartDate')
+            self.sort_by = settings.get('sort_by', ['StartDate', 'ContestName'])
             self.sort_inverted = settings.get('sort_inverted', False)
 
     def save_settings(self):

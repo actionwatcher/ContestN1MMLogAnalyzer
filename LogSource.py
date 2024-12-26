@@ -75,11 +75,10 @@ class SQLLogSource:
         if not self.isvalid_:
             return {}
         if self.contests_ is None:
-            q = f'select * from ContestInstance order by {sorted_by} {dir}'
+            q = f'select * from ContestInstance'
             self.contests_ = pd.read_sql_query(q, self.db_connection_)
-        elif self.sorted_by_ != sorted_by or self.sorted_dir_ != dir:
-            isasc = (dir.upper() == 'ASC')
-            self.contests_ = self.contests_.sort_values(by=sorted_by, ascending=isasc) 
+        isasc = [(dir.upper() == 'ASC'), True] # second is alwayas ascending
+        self.contests_ = self.contests_.sort_values(by=sorted_by, ascending=isasc) 
         self.sorted_by_ = sorted_by
         self.sorted_dir_ = dir
         return self.contests_
@@ -89,7 +88,7 @@ class SQLLogSource:
         if not self.isvalid_:
             return {}
         q = f'select * from DXLOG where ContestNR={contest_id}'
-        df = pd.read_sql_query(q, self.db_connection_)
+        df = pd.read_sql_query(q, self.db_connection_, index_col='TS', parse_dates='TS')
         return df
     
     def get_contest_info(self, contest_id: int) -> pd.DataFrame:
