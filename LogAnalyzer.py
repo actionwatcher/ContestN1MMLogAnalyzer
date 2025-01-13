@@ -3,6 +3,7 @@ from tkinter import ttk, filedialog
 import shelve
 import os
 import sys
+from datetime import datetime
 import platform
 if platform.system() == 'Darwin':
     from tkmacosx import Button
@@ -33,7 +34,6 @@ class LogAnalyzerApp:
 
     def init_source(self):
         file = os.path.join(self.data_source_dir, self.data_source_file.get())
-        print(file)
         self.log_source_ = SQLLogSource(files=[file])
         if not self.log_source_.is_valid():
             hl.log('ERROR', f'{file} Invalid')
@@ -82,6 +82,9 @@ class LogAnalyzerApp:
         self.stat_tree.configure(yscroll=scrollbar.set)
         scrollbar.grid(row=0, column=1, padx=3, pady=5, sticky="ns")
 
+        save_stats = Button(r_frame, text="Save Stats", command=lambda: save_tree_to_formatted_file(self.stat_tree, "stats.txt"))
+        save_stats.grid(row = 1, column=0)
+
         #self.stat_tree.bind('<ButtonRelease-1>', self.on_click)
 #        self.log_tree.bind(gLeftButton, self.show_context_menu)
         self.populate_stats_tree()
@@ -110,7 +113,7 @@ class LogAnalyzerApp:
         for idx, col in enumerate(columns[1:]):
             item_id = selected_items[idx]
             item = self.log_tree.item(item_id)
-            contest_name = item['values'][1]
+            contest_name = item['values'][1] + ' ' + datetime.strptime(item['values'][0], "%Y-%m-%d %H:%M:%S").strftime("%y-%m-%d-%H")
             contest_id = item['values'][2]
             self.stat_tree.heading(col, text=contest_name)
             qs = self.log_source_.get_contest_qsos(contest_id=contest_id)
@@ -138,7 +141,6 @@ class LogAnalyzerApp:
         selected_items = self.log_tree.selection()  # Get selected item IDs
         for item_id in selected_items:
             item = self.log_tree.item(item_id)
-            print(f"Selected date: {item_id}, Values: {item['values']}")
 
 
     def select_source_file(self):
@@ -176,6 +178,31 @@ class LogAnalyzerApp:
             settings['ui_height'] = self.ui_height
             settings['sort_by'] = self.sort_by
             settings['sort_inverted'] = self.sort_inverted
+
+from tabulate import tabulate
+
+def traverse_tree_for_table(tree, item="", level=0, output=None):
+    """Collect treeview data for table output."""
+    if output is None:
+        output = []
+    children = tree.get_children(item)
+    for child in children:
+        text = tree.item(child, "text")  # Get the text of the current item
+        values = tree.item(child, "values")  # Get the values of the current item
+        row = list(values)  # Combine the text and values into a single row
+        output.append(row)
+    return output
+
+# Function to save treeview contents to a formatted table
+def save_tree_to_formatted_file(tree, filename):
+    """Save treeview data as a formatted table to a text file."""
+    headers = []
+    for col in tree["columns"]:
+        headers.append(tree.heading(col)["text"])  # Fetch the text of each column header
+    data = traverse_tree_for_table(tree)
+    table = tabulate(data, headers=headers, tablefmt="grid")
+    with open(filename, "w") as f:
+        f.write(table)
 
 if getattr(sys, 'frozen', False): # application package
     bin_path = sys._MEIPASS

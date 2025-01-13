@@ -25,7 +25,6 @@ def generate_stats(df):
         print('Empty data frame')
         return stats, None, None, None
     stats['Contest'] = df.ContestName.iloc[0]
-    #del df['ContestName']
     df = df.sort_index()
 
     # calculate total operating time
@@ -67,10 +66,18 @@ def generate_stats(df):
 
     # calculate running 
     stats['Run QSOs percent'] = round(float(sum(df['IsRunQSO']))/stats['Total QSOs']*100, 1)
-    stats['Continents'] = set(df.Continent.to_list())
-    stats['Countries'] = set(df.CountryPrefix.to_list())
-    stats['Sections'] = set(df.Sect.to_list())
-
+    dummy = set(df.Continent.to_list())
+    dummy.discard('')
+    dummy.discard(' ')
+    stats['Continents'] = len(dummy)
+    dummy = set(df.CountryPrefix.to_list())
+    dummy.discard('')
+    dummy.discard(' ')
+    stats['Countries'] = len(dummy)
+    dummy = set(df.Sect.to_list())
+    dummy.discard('')
+    dummy.discard(' ')
+    stats['Sections'] = len(dummy)
     # radios
     stats['QSOs per Radios'] = {r: int((df['RadioNR'] == r).sum()) for r in set(df.RadioNR.to_list())}
     
