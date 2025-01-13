@@ -42,7 +42,7 @@ class LogAnalyzerApp:
         self.root_.geometry(f"{self.ui_width}x{self.ui_height}")
         l_frame = ttk.LabelFrame(self.root_, text="Log source")
         l_frame.grid(row=0, column=0, padx=3, pady=3)
-        r_frame = ttk.LabelFrame(self.root_, text="Stats")
+        r_frame = ttk.LabelFrame(self.root_, text="Results")
         r_frame.grid(row=0, column=1, padx=3, pady=3)
 
         self.file_path_entry = ttk.Entry(l_frame, textvariable=self.data_source_file, width=30)
@@ -74,21 +74,27 @@ class LogAnalyzerApp:
         self.populate_log_tree()
 
         # Stats frame
-        self.stat_tree = ttk.Treeview(r_frame, columns=('stat', 'contest'), show='headings', height=15)
+        notebook = ttk.Notebook(r_frame)
+        notebook.grid(row=0, column=0, padx=0, pady=0, sticky="nsew")
+        stat_frame = ttk.Frame(notebook)
+        notebook.add(stat_frame, text="Stats")
+        self.stat_tree = ttk.Treeview(stat_frame, columns=('stat', 'contest'), show='headings', height=15)
         self.stat_tree.heading('stat', text='Statistics')
         self.stat_tree.grid(row=0, column=0, padx=5, pady=5, sticky="nsew")
 
-        scrollbar = ttk.Scrollbar(r_frame, orient=tk.VERTICAL, command=self.stat_tree.yview)
+        scrollbar = ttk.Scrollbar(stat_frame, orient=tk.VERTICAL, command=self.stat_tree.yview)
         self.stat_tree.configure(yscroll=scrollbar.set)
         scrollbar.grid(row=0, column=1, padx=3, pady=5, sticky="ns")
 
-        save_stats = Button(r_frame, text="Save Stats", command=lambda: save_tree_to_formatted_file(self.stat_tree, "stats.txt"))
+        save_stats = Button(stat_frame, text="Save Stats", command=lambda: save_tree_to_formatted_file(self.stat_tree, "stats.txt"))
         save_stats.grid(row = 1, column=0)
 
         #self.stat_tree.bind('<ButtonRelease-1>', self.on_click)
 #        self.log_tree.bind(gLeftButton, self.show_context_menu)
         self.populate_stats_tree()
 
+        performance_frame = ttk.Frame(notebook)
+        notebook.add(performance_frame, text="Peformance")
     
     def populate_log_tree(self):
         if not self.log_source_.is_valid():
