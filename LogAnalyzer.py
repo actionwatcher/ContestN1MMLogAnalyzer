@@ -70,6 +70,8 @@ class LogAnalyzerApp:
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
         self.log_tree.bind('<ButtonRelease-1>', self.on_click)
+        self.log_tree.bind("<KeyRelease-Up>", self.on_click)
+        self.log_tree.bind("<KeyRelease-Down>", self.on_click)
 #        self.log_tree.bind(gLeftButton, self.show_context_menu)
         self.populate_log_tree()
 
@@ -125,7 +127,7 @@ class LogAnalyzerApp:
             qs = self.log_source_.get_contest_qsos(contest_id=contest_id)
             stat, counts_10min, counts_30min, counts_60min = hl.generate_stats(qs)
             stat = list(stat.items())
-            stat.insert(0,('Power category', self.log_source_.get_contest_info(19)['PowerCategory'][0]))
+            stat.insert(0,('Power category', self.log_source_.get_contest_info(contest_id)['PowerCategory'][0]))
             stat.insert(0,  ('Date', datetime.strptime(item['values'][0], "%Y-%m-%d %H:%M:%S").strftime("%Y-%m-%d-%H:%M")))
             stat = dict(stat)
             stats.append((stat, counts_10min, counts_30min, counts_60min))
