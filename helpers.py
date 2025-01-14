@@ -24,8 +24,10 @@ def generate_stats(df):
     if stats['Total QSOs'] == 0:
         print('Empty data frame')
         return stats, None, None, None
-    stats['Contest'] = df.ContestName.iloc[0]
     df = df.sort_index()
+    stats['Claimed points'] = df['Points'].sum()
+    stats['Claimed mults'] = df['IsMultiplier1'].sum() + df['IsMultiplier2'].sum()
+    stats['Claimed score'] = stats['Claimed mults'] * stats['Claimed points']
 
     # calculate total operating time
     ts = np.array(df.index.to_list())

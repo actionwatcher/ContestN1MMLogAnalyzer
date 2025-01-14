@@ -119,11 +119,16 @@ class LogAnalyzerApp:
         for idx, col in enumerate(columns[1:]):
             item_id = selected_items[idx]
             item = self.log_tree.item(item_id)
-            contest_name = item['values'][1] + ' ' + datetime.strptime(item['values'][0], "%Y-%m-%d %H:%M:%S").strftime("%y-%m-%d-%H")
+            contest_name = item['values'][1]
             contest_id = item['values'][2]
             self.stat_tree.heading(col, text=contest_name)
             qs = self.log_source_.get_contest_qsos(contest_id=contest_id)
-            stats.append(hl.generate_stats(qs))
+            stat, counts_10min, counts_30min, counts_60min = hl.generate_stats(qs)
+            stat = list(stat.items())
+            stat.insert(0,('Power category', self.log_source_.get_contest_info(19)['PowerCategory'][0]))
+            stat.insert(0,  ('Date', datetime.strptime(item['values'][0], "%Y-%m-%d %H:%M:%S").strftime("%Y-%m-%d-%H:%M")))
+            stat = dict(stat)
+            stats.append((stat, counts_10min, counts_30min, counts_60min))
         if len(stats) == 0:
             return
         for item in self.stat_tree.get_children():
