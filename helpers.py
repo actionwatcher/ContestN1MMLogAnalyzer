@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+from datetime import datetime
 
 def show_stats(dict):
     for key, val in dict.items():
@@ -84,6 +85,40 @@ def generate_stats(df):
     stats['QSOs per Radios'] = {r: int((df['RadioNR'] == r).sum()) for r in set(df.RadioNR.to_list())}
     
     return stats, counts_10min, counts_30min, counts_60min
+
+def generate_pefromance_data(df, increment : int, increment_unit : str):
+    """ Generate performance per hour and per band from DXLOG frame 
+        return: {ts, 160, 80, 40, 20, 15, 10, interval count, percent per interval}"""
+    stats = {}
+    bands = df.Band.sort_index()
+    cnt = len(bands)
+    if cnt == 0:
+        print('Empty data frame')
+        return stats
+    # I need to count Qs for every round operating hour
+    # verify round hour
+    start_date = bands.index[0].floor("h")
+    end_date = bands.index[-1].ceil("h")
+    
+    #generate analysis interval list
+    if increment_unit not in ['minutes', 'hours']:
+        raise ValueError("Unit must be minute or hour")
+
+    increment = pd.Timedelta(**{increment_unit: increment})
+    intervals = list(zip(pd.date_range(start_date, end_date - increment, freq=increment), 
+                    pd.date_range(start_date + increment, end_date, freq=increment)))
+    
+    ts = bands.index
+    for s, e in intervals:
+        mask = ((s <= ts) & (ts < e))
+        cnt_total = int(mask.sum())
+        sel = bands[mask]
+        stats[s] = ((sel == 1.8).sum(), (sel == 3.5).sum(), (sel == 7.0).sum(), (sel == 14.0).sum(), (sel == 21.0).sum(), (sel == 28.0).sum(), cnt_total, round(100.0*float(cnt_total)/cnt, 1))
+    
+    return stats
+
+def get_hours(ts : pd.Timestamp):
+    return ts.strftime('%H%M')
 
 def log(level, str):
     print(level, str)

@@ -76,28 +76,49 @@ class LogAnalyzerApp:
         self.populate_log_tree()
 
         # Stats frame
+        r_frame.columnconfigure(0, weight=1)
+        r_frame.rowconfigure(0, weight=1)
+
         notebook = ttk.Notebook(r_frame)
         notebook.grid(row=0, column=0, padx=0, pady=0, sticky="nsew")
         stat_frame = ttk.Frame(notebook)
-        notebook.add(stat_frame, text="Stats")
+        stat_frame.grid(sticky="nsew")
         self.stat_tree = ttk.Treeview(stat_frame, columns=('stat', 'contest'), show='headings', height=15)
         self.stat_tree.heading('stat', text='Statistics')
-        self.stat_tree.grid(row=0, column=0, padx=5, pady=5, sticky="nsew")
+        self.stat_tree.grid(row=0, column=0, sticky="nsew")
 
         scrollbar = ttk.Scrollbar(stat_frame, orient=tk.VERTICAL, command=self.stat_tree.yview)
         self.stat_tree.configure(yscroll=scrollbar.set)
         scrollbar.grid(row=0, column=1, padx=3, pady=5, sticky="ns")
 
-        save_stats = Button(stat_frame, text="Save Stats", command=lambda: save_tree_to_formatted_file(self.stat_tree, "stats.txt"))
+        save_stats = Button(stat_frame, text="Save Stats", 
+                            command=lambda: save_tree_to_formatted_file(
+                                [("SUMMARY", self.stat_tree),
+                                 ("PERFORMANCE", self.performance_tree)], "stats.txt"))
         save_stats.grid(row = 1, column=0)
-
-        #self.stat_tree.bind('<ButtonRelease-1>', self.on_click)
-#        self.log_tree.bind(gLeftButton, self.show_context_menu)
-        self.populate_stats_tree()
-
+        
+        
+        #Performance frame
         performance_frame = ttk.Frame(notebook)
+        performance_frame.grid(sticky="nsew")
+        columns = ['Hour', '160', '80', '40', '20', '15', '10', 'Rate', 'Pct']
+        self.performance_tree = ttk.Treeview(performance_frame,
+                                             columns=columns, show='headings', height=16)
+        self.performance_tree.grid(row=0, column=0, padx=5, pady=5, sticky="nsew")
+        for col in columns:
+            self.performance_tree.heading(col,text=col)
+            self.performance_tree.column(col, width=50)
+
+        scrollbar = ttk.Scrollbar(performance_frame, orient=tk.VERTICAL, command=self.performance_tree.yview)
+        scrollbar.grid(row=0, column=1, padx=3, pady=5, sticky="ns")
+        self.performance_tree.configure(yscrollcommand=scrollbar.set)
+        
+        notebook.add(stat_frame, text="Stats")
         notebook.add(performance_frame, text="Peformance")
-    
+        
+        self.populate_stats_tree()
+        self.populate_performance_tree()
+
     def populate_log_tree(self):
         if not self.log_source_.is_valid():
             return
@@ -140,6 +161,27 @@ class LogAnalyzerApp:
             values = [key] + [st[0][key] for st in stats]
             self.stat_tree.insert('', tk.END, values=values)
 
+    def populate_performance_tree(self):
+        selected_items = self.log_tree.selection()  # Get selected item IDs
+        contests = [ f'col{idx}' for idx in range(len(selected_items)+1)]
+        stats = []
+        for idx, col in enumerate(contests[1:]):
+            item_id = selected_items[idx]
+            item = self.log_tree.item(item_id)
+            contest_id = item['values'][2]
+            qs = self.log_source_.get_contest_qsos(contest_id=contest_id)
+            stat = hl.generate_pefromance_data(qs, 1, "hours")
+            stat = list(stat.items())
+            stat = dict(stat)
+            stats.append(stat)
+        if len(stats) == 0:
+            return
+        for item in self.performance_tree.get_children():
+            self.performance_tree.delete(item)
+
+        for key in stats[0].keys():
+            values = [hl.get_hours(key)] + list(stats[0][key])
+            self.performance_tree.insert('', tk.END, values=values)
 
 
     def on_click(self, event):
@@ -147,6 +189,7 @@ class LogAnalyzerApp:
             item = self.log_tree.focus()
             session_date = self.log_tree.item(item, 'values')[1]
             self.populate_stats_tree()
+            self.populate_performance_tree()
         except IndexError:
             pass # ignore heading click
 
@@ -172,13 +215,16 @@ class LogAnalyzerApp:
             self.populate_log_tree()
 
     def quit_app(self):
+        self.ui_width = self.root_.winfo_width()  # Get current width
+        self.ui_height = self.root_.winfo_height()
+        self.save_settings()
         self.root_.quit()
 
     def load_settings(self):
         with shelve.open(os.path.join(self.config_path_,'settings')) as settings:
             self.data_source_file = tk.StringVar(value=settings.get('data_source_file', 'MASTER.SCP'))
             self.data_source_dir = settings.get('data_source_dir', self.data_path)
-            self.ui_width = settings.get('ui_width',1008)
+            self.ui_width = settings.get('ui_width',1200)
             self.ui_height =settings.get('ui_height', 500)
             self.sort_by = settings.get('sort_by', ['StartDate', 'ContestName'])
             self.sort_inverted = settings.get('sort_inverted', False)
@@ -207,15 +253,19 @@ def traverse_tree_for_table(tree, item="", level=0, output=None):
     return output
 
 # Function to save treeview contents to a formatted table
-def save_tree_to_formatted_file(tree, filename):
+def save_tree_to_formatted_file(trees, filename):
     """Save treeview data as a formatted table to a text file."""
-    headers = []
-    for col in tree["columns"]:
-        headers.append(tree.heading(col)["text"])  # Fetch the text of each column header
-    data = traverse_tree_for_table(tree)
-    table = tabulate(data, headers=headers, tablefmt="grid")
     with open(filename, "w") as f:
-        f.write(table)
+        for title, tree in trees:
+            headers = []
+            for col in tree["columns"]:
+                headers.append(tree.heading(col)["text"])  # Fetch the text of each column header
+            data = traverse_tree_for_table(tree)
+            table = tabulate(data, headers=headers, tablefmt="grid")
+            f.write(title)
+            f.write("\n\n")
+            f.write(table)
+            f.write("\n\n\n")
 
 if getattr(sys, 'frozen', False): # application package
     bin_path = sys._MEIPASS
