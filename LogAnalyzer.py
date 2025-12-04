@@ -101,7 +101,7 @@ class LogAnalyzerApp:
         #Performance frame
         performance_frame = ttk.Frame(notebook)
         performance_frame.grid(sticky="nsew")
-        columns = ['Hour', '160', '80', '40', '20', '15', '10', 'Rate', 'Pct']
+        columns = ['Hour', '160', '80', '40', '20', '15', '10', 'Rate', 'Run %', 'Pct']
         self.performance_tree = ttk.Treeview(performance_frame,
                                              columns=columns, show='headings', height=16)
         self.performance_tree.grid(row=0, column=0, padx=5, pady=5, sticky="nsew")
@@ -179,8 +179,13 @@ class LogAnalyzerApp:
         for item in self.performance_tree.get_children():
             self.performance_tree.delete(item)
 
-        for key in stats[0].keys():
-            values = [hl.get_hours(key)] + list(stats[0][key])
+        for key in stats[-1].keys():
+            values = [hl.get_hours(key)] + list(stats[-1][key])
+            for i, v in enumerate(values):
+                v = v[0]
+                if i > 5:
+                    break
+
             self.performance_tree.insert('', tk.END, values=values)
 
 

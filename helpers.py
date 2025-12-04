@@ -90,14 +90,14 @@ def generate_pefromance_data(df, increment : int, increment_unit : str):
     """ Generate performance per hour and per band from DXLOG frame 
         return: {ts, 160, 80, 40, 20, 15, 10, interval count, percent per interval}"""
     stats = {}
-    bands = df.Band.sort_index()
+    bands = df[['Band', 'IsRunQSO']].sort_index() # select ts and band and sort it by ts
     cnt = len(bands)
     if cnt == 0:
         print('Empty data frame')
         return stats
     # I need to count Qs for every round operating hour
     # verify round hour
-    start_date = bands.index[0].floor("h")
+    start_date = bands.index[0].floor("h") #roundinig ts
     end_date = bands.index[-1].ceil("h")
     
     #generate analysis interval list
@@ -113,7 +113,14 @@ def generate_pefromance_data(df, increment : int, increment_unit : str):
         mask = ((s <= ts) & (ts < e))
         cnt_total = int(mask.sum())
         sel = bands[mask]
-        stats[s] = ((sel == 1.8).sum(), (sel == 3.5).sum(), (sel == 7.0).sum(), (sel == 14.0).sum(), (sel == 21.0).sum(), (sel == 28.0).sum(), cnt_total, round(100.0*float(cnt_total)/cnt, 1))
+        stats[s] = (((sel.Band == 1.8).sum(), ((sel.Band == 1.8) & sel.IsRunQSO).sum()),
+                    ((sel.Band == 3.5).sum(), ((sel.Band == 3.5) & sel.IsRunQSO).sum()),
+                    ((sel.Band == 7.0).sum(), ((sel.Band == 7.0) & sel.IsRunQSO).sum()),
+                    ((sel.Band == 14.0).sum(), ((sel.Band == 14.0) & sel.IsRunQSO).sum()),
+                    ((sel.Band == 21.0).sum(), ((sel.Band == 21.0) & sel.IsRunQSO).sum()),
+                    ((sel.Band == 28.0).sum(), ((sel.Band == 28.0) & sel.IsRunQSO).sum()),
+                    cnt_total, round(100.0*float(sel.IsRunQSO.sum())/(cnt_total + 0.001)),
+                    round(100.0*float(cnt_total)/cnt, 1))
     
     return stats
 

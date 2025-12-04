@@ -3,6 +3,7 @@ channels:
 dependencies:
   - python=3.13
   - pandas
+  - tabulate
   - pip
   - pip:
       # only installed on macOS
