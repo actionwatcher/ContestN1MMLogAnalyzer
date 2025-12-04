@@ -101,7 +101,7 @@ class LogAnalyzerApp:
         #Performance frame
         performance_frame = ttk.Frame(notebook)
         performance_frame.grid(sticky="nsew")
-        columns = ['Hour', '160', '80', '40', '20', '15', '10', 'Rate', 'Run %', 'Pct']
+        columns = ['Hour', '160', '80', '40', '20', '15', '10', 'Mults', 'Rate', 'Run %', 'Pct']
         self.performance_tree = ttk.Treeview(performance_frame,
                                              columns=columns, show='headings', height=16)
         self.performance_tree.grid(row=0, column=0, padx=5, pady=5, sticky="nsew")

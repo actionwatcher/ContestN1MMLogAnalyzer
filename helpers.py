@@ -90,7 +90,7 @@ def generate_pefromance_data(df, increment : int, increment_unit : str):
     """ Generate performance per hour and per band from DXLOG frame 
         return: {ts, 160, 80, 40, 20, 15, 10, interval count, percent per interval}"""
     stats = {}
-    bands = df[['Band', 'IsRunQSO']].sort_index() # select ts and band and sort it by ts
+    bands = df[['Band', 'IsRunQSO', 'IsMultiplier1', 'IsMultiplier2']].sort_index() # select ts and band and sort it by ts
     cnt = len(bands)
     if cnt == 0:
         print('Empty data frame')
@@ -112,6 +112,7 @@ def generate_pefromance_data(df, increment : int, increment_unit : str):
     for s, e in intervals:
         mask = ((s <= ts) & (ts < e))
         cnt_total = int(mask.sum())
+        mult_total = (bands[mask].IsMultiplier1 | bands[mask].IsMultiplier2).sum()
         sel = bands[mask]
         stats[s] = (((sel.Band == 1.8).sum(), ((sel.Band == 1.8) & sel.IsRunQSO).sum()),
                     ((sel.Band == 3.5).sum(), ((sel.Band == 3.5) & sel.IsRunQSO).sum()),
@@ -119,6 +120,7 @@ def generate_pefromance_data(df, increment : int, increment_unit : str):
                     ((sel.Band == 14.0).sum(), ((sel.Band == 14.0) & sel.IsRunQSO).sum()),
                     ((sel.Band == 21.0).sum(), ((sel.Band == 21.0) & sel.IsRunQSO).sum()),
                     ((sel.Band == 28.0).sum(), ((sel.Band == 28.0) & sel.IsRunQSO).sum()),
+                    mult_total,
                     cnt_total, round(100.0*float(sel.IsRunQSO.sum())/(cnt_total + 0.001)),
                     round(100.0*float(cnt_total)/cnt, 1))
     
