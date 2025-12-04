@@ -158,7 +158,16 @@ class LogAnalyzerApp:
             self.stat_tree.delete(item)
 
         for key in stats[0][0].keys():
-            values = [key] + [st[0][key] for st in stats]
+            if key == 'Operating Time':
+                formatted_values = []
+                for st in stats:
+                    td = st[0][key]
+                    hours = td.components.days * 24 + td.components.hours
+                    minutes = td.components.minutes
+                    formatted_values.append(f"{hours:02d}:{minutes:02d}")
+                values = [key] + formatted_values
+            else:
+                values = [key] + [st[0][key] for st in stats]
             self.stat_tree.insert('', tk.END, values=values)
 
     def populate_performance_tree(self):
